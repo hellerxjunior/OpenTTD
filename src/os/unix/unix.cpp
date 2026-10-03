@@ -25,6 +25,10 @@
 #include <SDL.h>
 #endif
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 #ifdef WITH_ICONV
 #include <iconv.h>
 #endif /* WITH_ICONV */
@@ -192,6 +196,14 @@ void ShowInfoI(std::string_view str)
 #if !defined(__APPLE__)
 void ShowOSErrorBox(std::string_view buf, bool)
 {
+#ifdef __ANDROID__
+	/* There is no terminal on Android, so log it and show it to the player. */
+	std::string msg(buf);
+	__android_log_write(ANDROID_LOG_ERROR, "OpenTTD", msg.c_str());
+	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "OpenTTD", msg.c_str(), nullptr);
+	return;
+#endif
+
 	/* All unix systems, except OSX. Only use escape codes on a TTY. */
 	if (isatty(fileno(stderr))) {
 		fmt::print(stderr, "\033[1;31mError: {}\033[0;39m\n", buf);

@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+/* Native libraries and game data are produced by os/android/build.sh. */
+android {
+    namespace 'org.openttd.travel'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'org.openttd.travel'
+        minSdk 24
+        targetSdk 34
+        versionCode = Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName = System.getenv('VERSION_NAME') ?: 'dev'
+    }
+
+    signingConfigs {
+        /* A fixed key, so a new APK installs over the old one and keeps the saves. */
+        travel {
+            storeFile file('travel.keystore')
+            storePassword 'openttd'
+            keyAlias 'travel'
+            keyPassword 'openttd'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.travel
+        }
+    }
+
+    sourceSets.main {
+        jniLibs.srcDir 'libs'
+        assets.srcDir 'build/game-assets'
+        java.srcDir 'build/sdl-java'
+    }
+
+    aaptOptions {
+        /* Keep the base set archives as they are. */
+        noCompress 'tar', 'grf', 'obg', 'obs', 'obm'
+        /* The default pattern would drop some of the game's data files. */
+        ignoreAssetsPattern '!.svn:!.git'
+    }
+
+    lint {
+        abortOnError false
+    }
+}

@@ -159,6 +159,10 @@ bool VideoDriver_SDL_Base::CreateMainWindow(uint w, uint h, uint flags)
 	if (_fullscreen) {
 		flags |= SDL_WINDOW_FULLSCREEN;
 	}
+#ifdef __ANDROID__
+	/* Hide the phone's status and navigation bars. */
+	flags |= SDL_WINDOW_FULLSCREEN;
+#endif
 
 	int x = SDL_WINDOWPOS_UNDEFINED, y = SDL_WINDOWPOS_UNDEFINED;
 	SDL_Rect r;
@@ -209,6 +213,14 @@ bool VideoDriver_SDL_Base::CreateMainSurface(uint w, uint h, bool resize)
 	Debug(Facility::Driver, Severity::Error, "SDL2: using mode {}x{}", w, h);
 
 	if (!this->CreateMainWindow(w, h)) return false;
+#ifdef __ANDROID__
+	/* On Android the window always fills the screen, whatever size we asked for. */
+	int window_w, window_h;
+	SDL_GetWindowSize(this->sdl_window, &window_w, &window_h);
+	w = window_w;
+	h = window_h;
+	resize = false;
+#endif
 	if (resize) SDL_SetWindowSize(this->sdl_window, w, h);
 	this->ClientSizeChanged(w, h, true);
 

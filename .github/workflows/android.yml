@@ -1,0 +1,99 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build APK
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        gradle-version: '8.9'
+
+    - name: Install build tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build
+
+    - name: Build
+      env:
+        VERSION_CODE: ${{ github.run_number }}
+        VERSION_NAME: ${{ github.run_number }}-${{ github.sha }}
+      run: |
+        export ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME}"
+        os/android/build.sh
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: openttd-travel-apk
+        path: build-android/openttd-travel.apk
+
+    - name: Publish to the "android-latest" release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release delete android-latest --yes --cleanup-tag || true
+        gh release create android-latest build-android/openttd-travel.apk \
+          --target "${GITHUB_SHA}" \
+          --prerelease \
+          --title "OpenTTD Travel (nejnovější)" \
+          --notes "Sestaveno z ${GITHUB_SHA}. Otevři v mobilu a nainstaluj openttd-travel.apk."
+
+  smoke-test:
+    name: Start on emulator
+    needs: apk
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download APK
+      uses: actions/download-artifact@v4
+      with:
+        name: openttd-travel-apk
+        path: build-android
+
+    - name: Enable KVM
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+        sudo apt-get update
+        sudo apt-get install -y imagemagick
+
+    - name: Start the game
+      uses: reactivecircus/android-emulator-runner@v2
+      with:
+        # x86_64 images from API 30 run arm64 apps through translation.
+        api-level: 30
+        arch: x86_64
+        target: google_apis
+        disable-animations: true
+        script: bash os/android/smoke-test.sh build-android/openttd-travel.apk
