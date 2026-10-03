@@ -61,7 +61,7 @@ for log in $(find "${DATA}" -name 'crash*.json.log' -o -name 'crash*.log'); do
 done
 
 find "${DATA}" -newer "${OUT}" -type f | grep -v baseset || true
-shot="$(find "${DATA}" -name 'screenshot*.png' | head -n 1)"
+shot="$(find "${DATA}/screenshot" -name '*.png' 2>/dev/null | head -n 1)"
 if [ -n "${shot}" ]; then
 	convert "${shot}" -scale 300% -quality 80 "${WORK}/routes.jpg"
 	echo "SCREENSHOT_routes_BEGIN"
