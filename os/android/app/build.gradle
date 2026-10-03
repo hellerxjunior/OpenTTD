@@ -11,8 +11,8 @@ android {
         applicationId 'org.openttd.travel'
         minSdk 24
         targetSdk 34
-        versionCode (System.getenv('VERSION_CODE') ?: '1').toInteger()
-        versionName System.getenv('VERSION_NAME') ?: 'dev'
+        versionCode = Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName = System.getenv('VERSION_NAME') ?: 'dev'
     }
 
     signingConfigs {
