@@ -7,7 +7,7 @@ PACKAGE=org.openttd.travel
 
 adb install -r "${APK}"
 adb logcat -c
-adb shell am start -n "${PACKAGE}/.OpenTTDActivity"
+adb shell am start -n "${PACKAGE}/.OpenTTDActivity" --es args "'-d misc=3'"
 
 for wait in 45 45 30; do
 	sleep "${wait}"

@@ -47,6 +47,14 @@ public class OpenTTDActivity extends SDLActivity {
         super.onCreate(savedInstanceState);
     }
 
+    /** Extra command line arguments, e.g. "-d misc=3" from adb for debugging. */
+    @Override
+    protected String[] getArguments() {
+        String args = getIntent().getStringExtra("args");
+        if (args == null || args.trim().isEmpty()) return new String[0];
+        return args.trim().split("\\s+");
+    }
+
     @Override
     protected String[] getLibraries() {
         return new String[] { "SDL2", "main" };
@@ -59,7 +67,8 @@ public class OpenTTDActivity extends SDLActivity {
         if (stamp.exists() && readStamp(stamp) == version) return;
 
         Log.i(TAG, "Installing game data to " + target);
-        copyAssets(getAssets(), ASSET_ROOT, target);
+        int files = copyAssets(getAssets(), ASSET_ROOT, target);
+        Log.i(TAG, "Installed " + files + " files");
         try (OutputStream out = new FileOutputStream(stamp)) {
             out.write(Long.toString(version).getBytes());
         }
@@ -75,7 +84,7 @@ public class OpenTTDActivity extends SDLActivity {
         }
     }
 
-    private static void copyAssets(AssetManager assets, String path, File target) throws IOException {
+    private static int copyAssets(AssetManager assets, String path, File target) throws IOException {
         String[] children = assets.list(path);
         if (children == null || children.length == 0) {
             /* A file (asset directories are never empty). */
@@ -85,12 +94,14 @@ public class OpenTTDActivity extends SDLActivity {
                 int n;
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
             }
-            return;
+            return 1;
         }
         target.mkdirs();
+        int files = 0;
         for (String child : children) {
-            copyAssets(assets, path + "/" + child, new File(target, child));
+            files += copyAssets(assets, path + "/" + child, new File(target, child));
         }
+        return files;
     }
 
     /** Touch friendly defaults, only written before the very first start. */
