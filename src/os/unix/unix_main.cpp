@@ -16,6 +16,11 @@
 #include <time.h>
 #include <signal.h>
 
+#ifdef __ANDROID__
+/* SDL renames main() to SDL_main(), which its Java activity calls. */
+#	include <SDL_main.h>
+#endif
+
 #include "../../safeguards.h"
 
 int CDECL main(int argc, char *argv[])

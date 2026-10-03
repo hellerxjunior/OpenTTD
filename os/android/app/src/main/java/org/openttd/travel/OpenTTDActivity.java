@@ -1,0 +1,108 @@
+package org.openttd.travel;
+
+import android.content.res.AssetManager;
+import android.os.Bundle;
+import android.system.Os;
+import android.util.Log;
+
+import org.libsdl.app.SDLActivity;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Locale;
+
+/**
+ * Starts OpenTTD through SDL. Before the native code runs, the game data
+ * packed in the APK (base sets, languages, scripts) is copied to the app's
+ * private storage, because OpenTTD reads its data from normal files.
+ */
+public class OpenTTDActivity extends SDLActivity {
+    private static final String TAG = "OpenTTD";
+    private static final String ASSET_ROOT = "openttd";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        File files = getFilesDir();
+        File data = new File(files, "data");
+        File config = new File(files, "config");
+
+        try {
+            installData(new File(data, "openttd"));
+            writeDefaultConfig(new File(config, "openttd"));
+
+            Os.setenv("HOME", files.getAbsolutePath(), true);
+            Os.setenv("XDG_DATA_HOME", data.getAbsolutePath(), true);
+            Os.setenv("XDG_CONFIG_HOME", config.getAbsolutePath(), true);
+            Os.setenv("TMPDIR", getCacheDir().getAbsolutePath(), true);
+            /* OpenTTD picks its first language from the locale. */
+            Locale locale = Locale.getDefault();
+            Os.setenv("LANG", locale.getLanguage() + "_" + locale.getCountry() + ".UTF-8", true);
+        } catch (Exception e) {
+            Log.e(TAG, "Preparing game data failed", e);
+        }
+
+        super.onCreate(savedInstanceState);
+    }
+
+    @Override
+    protected String[] getLibraries() {
+        return new String[] { "SDL2", "main" };
+    }
+
+    /** Copy the bundled data once per installed APK version. */
+    private void installData(File target) throws Exception {
+        long version = getPackageManager().getPackageInfo(getPackageName(), 0).lastUpdateTime;
+        File stamp = new File(target, ".installed");
+        if (stamp.exists() && readStamp(stamp) == version) return;
+
+        Log.i(TAG, "Installing game data to " + target);
+        copyAssets(getAssets(), ASSET_ROOT, target);
+        try (OutputStream out = new FileOutputStream(stamp)) {
+            out.write(Long.toString(version).getBytes());
+        }
+    }
+
+    private static long readStamp(File stamp) {
+        try (InputStream in = new java.io.FileInputStream(stamp)) {
+            byte[] buf = new byte[32];
+            int n = in.read(buf);
+            return Long.parseLong(new String(buf, 0, Math.max(n, 0)).trim());
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    private static void copyAssets(AssetManager assets, String path, File target) throws IOException {
+        String[] children = assets.list(path);
+        if (children == null || children.length == 0) {
+            /* A file (asset directories are never empty). */
+            target.getParentFile().mkdirs();
+            try (InputStream in = assets.open(path); OutputStream out = new FileOutputStream(target)) {
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            }
+            return;
+        }
+        target.mkdirs();
+        for (String child : children) {
+            copyAssets(assets, path + "/" + child, new File(target, child));
+        }
+    }
+
+    /** Touch friendly defaults, only written before the very first start. */
+    private static void writeDefaultConfig(File dir) throws IOException {
+        File cfg = new File(dir, "openttd.cfg");
+        if (cfg.exists()) return;
+        dir.mkdirs();
+        String text = "[gui]\n"
+                /* Drag the map with a finger (left button). */
+                + "scroll_mode = 3\n";
+        try (OutputStream out = new FileOutputStream(cfg)) {
+            out.write(text.getBytes());
+        }
+    }
+}
