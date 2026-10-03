@@ -24,6 +24,8 @@ map_y = 8
 [difficulty]
 max_loan = 2000000
 construction_cost = 0
+[gui]
+autosave_on_exit = true
 [network]
 participate_survey = no
 CFG
@@ -41,8 +43,9 @@ OUT="${WORK}/routes.txt"
 } > "${DATA}/scripts/game_start.scr"
 
 # The null video driver plays like a dedicated server, without a company, so
-# run the real SDL driver without a screen and stop it after a while.
-(cd "${BUILD}" && SDL_VIDEODRIVER=dummy timeout 90 ./openttd -v sdl -s null -m null -g -G 20261003) 2>&1 | tail -n 20 || true
+# run the real SDL driver without a screen and stop it after a while. SDL
+# turns the TERM signal into a quit request, which saves and quits.
+(cd "${BUILD}" && SDL_VIDEODRIVER=dummy timeout -k 30 90 ./openttd -v sdl -s null -m null -g -G 20261003) 2>&1 | tail -n 20 || true
 
 echo "::group::Console output"
 cat "${OUT}"
