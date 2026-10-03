@@ -45,7 +45,7 @@ OUT="${WORK}/routes.txt"
 # The null video driver plays like a dedicated server, without a company, so
 # run the real SDL driver without a screen and stop it after a while. SDL
 # turns the TERM signal into a quit request, which saves and quits.
-(cd "${BUILD}" && SDL_VIDEODRIVER=dummy timeout -k 30 90 ./openttd -v sdl -s null -m null -g -G 20261003) 2>&1 | tail -n 20 || true
+(cd "${BUILD}" && SDL_VIDEODRIVER=dummy timeout -k 30 90 ./openttd -v sdl -s null -m null -g -G 20261003 -d misc=9) 2>&1 | grep -E "autoroute|rror|ssert" | head -n 400 || true
 
 echo "::group::Console output"
 cat "${OUT}"
@@ -57,6 +57,7 @@ for log in $(find "${DATA}" -name 'crash*.json.log' -o -name 'crash*.log'); do
 	echo "::endgroup::"
 done
 
+find "${DATA}" -newer "${OUT}" -type f | grep -v baseset || true
 shot="$(find "${DATA}" -name 'screenshot*.png' | head -n 1)"
 if [ -n "${shot}" ]; then
 	convert "${shot}" -scale 300% -quality 80 "${WORK}/routes.jpg"

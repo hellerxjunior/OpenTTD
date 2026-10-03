@@ -20,6 +20,8 @@
 #include "stdafx.h"
 #include "autoroute_cmd.h"
 #include "command_func.h"
+#include "debug.h"
+#include "strings_func.h"
 #include "map_func.h"
 #include "bridge.h"
 #include "industry.h"
@@ -496,7 +498,11 @@ CommandCost CmdBuildAutoRoute(DoCommandFlags flags, TileIndex end_tile, TileInde
 	if (!path.has_value()) return CommandCost(STR_ERROR_AUTOROUTE_NOT_FOUND);
 
 	CommandCost total(ExpensesType::Construction);
-	for (const Piece &p : *path) total.AddCost(p.cost);
+	for (const Piece &p : *path) {
+		total.AddCost(p.cost);
+		if (p.cost != 0) Debug(Facility::Misc, Severity::Info, "[autoroute] piece {} at {},{} arg {} cost {}", to_underlying(p.kind), TileX(p.tile), TileY(p.tile), p.arg, p.cost);
+	}
+	Debug(Facility::Misc, Severity::Info, "[autoroute] {} pieces, {} {}", path->size(), flags.Test(DoCommandFlag::Execute) ? "building" : "testing", total.GetCost());
 	if (total.GetCost() == 0) return CommandCost(STR_ERROR_ALREADY_BUILT);
 	if (!flags.Test(DoCommandFlag::Execute)) return total;
 
@@ -514,6 +520,7 @@ CommandCost CmdBuildAutoRoute(DoCommandFlags flags, TileIndex end_tile, TileInde
 			had_success = true;
 			total.AddCost(ret.GetCost());
 		} else if (ret.GetErrorMessage() != STR_ERROR_ALREADY_BUILT) {
+			Debug(Facility::Misc, Severity::Info, "[autoroute] failed piece {} at {},{} arg {}: {}", to_underlying(p.kind), TileX(p.tile), TileY(p.tile), p.arg, GetString(ret.GetErrorMessage()));
 			last_error = std::move(ret);
 		}
 	}
