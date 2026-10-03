@@ -106,6 +106,10 @@ private:
 	bool edit_box_focused = false;
 
 	int startup_display = 0; ///< The display to show OpenTTD on when starting.
+
+#ifdef __ANDROID__
+	float pinch_distance = 0; ///< Change of finger distance not yet turned into zoom steps.
+#endif
 };
 
 #endif /* VIDEO_SDL_H */
