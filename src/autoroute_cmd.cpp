@@ -208,7 +208,7 @@ private:
 			if (ret.Succeeded()) return {true, ret.GetCost()};
 			if (ret.GetErrorMessage() == STR_ERROR_ALREADY_BUILT) return {true, 0};
 			/* Trains may run straight through existing stations. */
-			if (HasStationRail(tile) && GetRailStationTrack(tile) == track && GetRailType(tile) == this->railtype) return {true, 0};
+			if (HasStationTileRail(tile) && GetRailStationTrack(tile) == track && GetRailType(tile) == this->railtype) return {true, 0};
 			return {false, 0};
 		});
 		if (!r.ok) return {};

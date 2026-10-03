@@ -48,7 +48,13 @@ echo "::group::Console output"
 cat "${OUT}"
 echo "::endgroup::"
 
-shot="$(find "${DATA}" -name '*.png' | head -n 1)"
+for log in $(find "${DATA}" -name 'crash*.json.log' -o -name 'crash*.log'); do
+	echo "::group::Crash log ${log}"
+	cat "${log}"
+	echo "::endgroup::"
+done
+
+shot="$(find "${DATA}" -name 'screenshot*.png' | head -n 1)"
 if [ -n "${shot}" ]; then
 	convert "${shot}" -scale 300% -quality 80 "${WORK}/routes.jpg"
 	echo "SCREENSHOT_routes_BEGIN"
