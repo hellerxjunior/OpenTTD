@@ -2,7 +2,7 @@
 # Tries the "connect two places" route finder on a generated map.
 #
 # Usage: route-test.sh <build dir>
-# Needs a built openttd (any video driver) in the build dir, curl, unzip and
+# Needs a built openttd with SDL in the build dir, curl, unzip and
 # ImageMagick. Prints the console output and a minimap of the result as a
 # base64 JPEG between SCREENSHOT_routes_BEGIN/END.
 
@@ -40,7 +40,9 @@ OUT="${WORK}/routes.txt"
 	echo "script"
 } > "${DATA}/scripts/game_start.scr"
 
-(cd "${BUILD}" && timeout 600 ./openttd -v null:ticks=10 -s null -m null -g -G 20261003 -d misc=1) 2>&1 | grep -v "^dbg: \[misc\] \[\(sdl\|null\)" || true
+# The null video driver plays like a dedicated server, without a company, so
+# run the real SDL driver without a screen and stop it after a while.
+(cd "${BUILD}" && SDL_VIDEODRIVER=dummy timeout 90 ./openttd -v sdl -s null -m null -g -G 20261003) 2>&1 | tail -n 20 || true
 
 echo "::group::Console output"
 cat "${OUT}"
