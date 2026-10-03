@@ -34,6 +34,7 @@
 #include "station_map.h"
 #include "tilearea_type.h"
 #include "tunnelbridge_cmd.h"
+#include "tunnelbridge_map.h"
 #include "settings_type.h"
 
 #include <queue>
@@ -262,6 +263,22 @@ private:
 		return {};
 	}
 
+	/**
+	 * An existing bridge or tunnel of our kind starting at \a head in direction \a dir.
+	 * @return The crossing with no cost, or an empty piece when there is none.
+	 */
+	Piece ExistingCrossing(TileIndex head, DiagDirection dir) const
+	{
+		if (!IsUsableTile(head) || !IsTileType(head, TileType::TunnelBridge)) return {};
+		if (GetTunnelBridgeDirection(head) != dir || GetTunnelBridgeTransportType(head) != this->type) return {};
+		if (this->type == TransportType::Rail) {
+			if (GetRailType(head) != this->railtype || !IsTileOwner(head, _current_company)) return {};
+		} else if (!HasTileRoadType(head, GetRoadTramType(this->roadtype))) {
+			return {};
+		}
+		return {Piece::Kind::Bridge, 0, head, GetOtherTunnelBridgeEnd(head), 0};
+	}
+
 	/** Pick a bridge type for a length: the fastest for railways, the cheapest for roads. */
 	std::optional<BridgeType> ChooseBridge(uint length) const
 	{
@@ -316,12 +333,12 @@ private:
 		}
 
 		/* Bridges start at the next tile, in line with a straight track. */
-		if (IsDiagonalTrackdir(td) && this->IsBlockedAhead(next, exit)) {
-			Piece bridge = this->BridgePiece(next, exit);
-			if (bridge.kind != Piece::Kind::None) {
-				int length = DistanceManhattan(tile, bridge.end);
-				this->Push(Key(bridge.end, to_underlying(td), true), key, g + STEP_COST * length + this->PieceCost(bridge), {bridge, Piece{}});
-			}
+		if (!IsDiagonalTrackdir(td)) return;
+		Piece bridge = this->ExistingCrossing(next, exit);
+		if (bridge.kind == Piece::Kind::None && this->IsBlockedAhead(next, exit)) bridge = this->BridgePiece(next, exit);
+		if (bridge.kind != Piece::Kind::None) {
+			int length = DistanceManhattan(tile, bridge.end);
+			this->Push(Key(bridge.end, to_underlying(td), true), key, g + STEP_COST * length + this->PieceCost(bridge), {bridge, Piece{}});
 		}
 	}
 
@@ -362,14 +379,13 @@ private:
 				this->Push(Key(next, to_underlying(exit), false), key, base, {here, Piece{}});
 			}
 
-			if (this->IsBlockedAhead(next, exit)) {
-				Piece bridge = this->BridgePiece(next, exit);
-				if (bridge.kind != Piece::Kind::None) {
-					int length = DistanceManhattan(tile, bridge.end);
-					uint8_t bridge_dir = (bridge.end == this->end) ? GOAL_DIR : to_underlying(exit);
-					this->Push(Key(bridge.end, bridge_dir, bridge_dir != GOAL_DIR), key,
-							g + STEP_COST * length + this->PieceCost(here) + this->PieceCost(bridge) + turn, {here, bridge});
-				}
+			Piece bridge = this->ExistingCrossing(next, exit);
+			if (bridge.kind == Piece::Kind::None && this->IsBlockedAhead(next, exit)) bridge = this->BridgePiece(next, exit);
+			if (bridge.kind != Piece::Kind::None) {
+				int length = DistanceManhattan(tile, bridge.end);
+				uint8_t bridge_dir = (bridge.end == this->end) ? GOAL_DIR : to_underlying(exit);
+				this->Push(Key(bridge.end, bridge_dir, bridge_dir != GOAL_DIR), key,
+						g + STEP_COST * length + this->PieceCost(here) + this->PieceCost(bridge) + turn, {here, bridge});
 			}
 		}
 	}
@@ -511,7 +527,7 @@ CommandCost CmdBuildAutoRoute(DoCommandFlags flags, TileIndex end_tile, TileInde
 	CommandCost last_error = CMD_ERROR;
 	bool had_success = false;
 	for (const Piece &p : *path) {
-		if (p.cost == 0 && p.kind != Piece::Kind::Bridge) {
+		if (p.cost == 0) {
 			/* Already there; building would only fail with "already built". */
 			continue;
 		}
