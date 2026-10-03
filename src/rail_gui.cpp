@@ -34,6 +34,7 @@
 #include "vehicle_func.h"
 #include "zoom_func.h"
 #include "rail_gui.h"
+#include "autoroute_gui.h"
 #include "toolbar_gui.h"
 #include "station_cmd.h"
 #include "tunnelbridge_cmd.h"
@@ -468,7 +469,7 @@ struct BuildRailToolbarWindow : Window {
 	static inline const std::initializer_list<WidgetID> can_build_widgets = {
 		WID_RAT_BUILD_NS, WID_RAT_BUILD_X, WID_RAT_BUILD_EW, WID_RAT_BUILD_Y, WID_RAT_AUTORAIL,
 		WID_RAT_BUILD_DEPOT, WID_RAT_BUILD_WAYPOINT, WID_RAT_BUILD_STATION, WID_RAT_BUILD_SIGNALS,
-		WID_RAT_BUILD_BRIDGE, WID_RAT_BUILD_TUNNEL, WID_RAT_CONVERT_RAIL,
+		WID_RAT_BUILD_BRIDGE, WID_RAT_BUILD_TUNNEL, WID_RAT_CONVERT_RAIL, WID_RAT_AUTOROUTE,
 	};
 
 	void OnInvalidateData([[maybe_unused]] int data = 0, [[maybe_unused]] bool gui_scope = true) override
@@ -601,6 +602,7 @@ struct BuildRailToolbarWindow : Window {
 			case WID_RAT_BUILD_BRIDGE: return SPR_CURSOR_BRIDGE;
 			case WID_RAT_BUILD_TUNNEL: return GetRailTypeInfo(_cur_railtype)->cursor.tunnel;
 			case WID_RAT_CONVERT_RAIL: return GetRailTypeInfo(_cur_railtype)->cursor.convert;
+			case WID_RAT_AUTOROUTE: return GetRailTypeInfo(_cur_railtype)->cursor.autorail;
 			default: NOT_REACHED();
 		}
 	}
@@ -626,6 +628,7 @@ struct BuildRailToolbarWindow : Window {
 			case WID_RAT_BUILD_BRIDGE: return HT_RECT;
 			case WID_RAT_BUILD_TUNNEL: return HT_SPECIAL;
 			case WID_RAT_CONVERT_RAIL: return HT_RECT | HT_DIAGONAL;
+			case WID_RAT_AUTOROUTE: return HT_RECT;
 			default: NOT_REACHED();
 		}
 	}
@@ -739,6 +742,10 @@ struct BuildRailToolbarWindow : Window {
 				VpStartPlaceSizing(tile, VPM_X_AND_Y, DDSP_CONVERT_RAIL);
 				break;
 
+			case WID_RAT_AUTOROUTE:
+				PlaceProc_AutoRoute(this, tile, TransportType::Rail, _cur_railtype, INVALID_ROADTYPE);
+				break;
+
 			default: NOT_REACHED();
 		}
 	}
@@ -823,6 +830,7 @@ struct BuildRailToolbarWindow : Window {
 		if (this->IsWidgetLowered(WID_RAT_BUILD_STATION)) SetViewportCatchmentStation(nullptr, true);
 		if (this->IsWidgetLowered(WID_RAT_BUILD_WAYPOINT)) SetViewportCatchmentWaypoint(nullptr, true);
 
+		ResetAutoRoute();
 		this->RaiseButtons();
 		this->DisableWidget(WID_RAT_REMOVE);
 		this->SetWidgetDirty(WID_RAT_REMOVE);
@@ -930,6 +938,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_rail_widgets =
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_RAIL_NW, STR_RAIL_TOOLBAR_TOOLTIP_BUILD_RAILROAD_TRACK),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_RAT_AUTORAIL),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_AUTORAIL, STR_RAIL_TOOLBAR_TOOLTIP_BUILD_AUTORAIL),
+		NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_RAT_AUTOROUTE),
+						SetFill(0, 1), SetToolbarMinimalSize(2), SetStringTip(STR_AUTOROUTE_BUTTON, STR_RAIL_TOOLBAR_TOOLTIP_AUTOROUTE),
 
 		NWidget(WWT_PANEL, Colours::DarkGreen), SetToolbarSpacerMinimalSize(), EndContainer(),
 

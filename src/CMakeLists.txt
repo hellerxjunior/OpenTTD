@@ -79,6 +79,10 @@ add_files(
     autoreplace_gui.cpp
     autoreplace_gui.h
     autoreplace_type.h
+    autoroute_cmd.cpp
+    autoroute_cmd.h
+    autoroute_gui.cpp
+    autoroute_gui.h
     autoslope.h
     base_consist.cpp
     base_consist.h

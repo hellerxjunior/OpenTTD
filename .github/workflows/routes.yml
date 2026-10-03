@@ -1,0 +1,30 @@
+name: Hledání tras
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  routes:
+    name: Spojení dvou míst na vygenerované mapě
+    runs-on: ubuntu-24.04
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build libsdl2-dev libpng-dev imagemagick
+
+    - name: Build
+      run: |
+        cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        cmake --build build --target openttd
+
+    - name: Find routes
+      run: bash os/android/route-test.sh build
