@@ -102,7 +102,11 @@ public class OpenTTDActivity extends SDLActivity {
         writeIfMissing(new File(dir, "openttd.cfg"),
                 "[gui]\n"
                 /* Drag the map with a finger (left button). */
-                + "scroll_mode = 3\n");
+                + "scroll_mode = 3\n"
+                /* A private game; do not ask about sending usage surveys. A
+                 * config without a version still reads this from here. */
+                + "[network]\n"
+                + "participate_survey = no\n");
         writeIfMissing(new File(dir, "private.cfg"),
                 "[network]\n"
                 /* A private game; do not ask about sending usage surveys. */
