@@ -98,13 +98,20 @@ public class OpenTTDActivity extends SDLActivity {
 
     /** Touch friendly defaults, only written before the very first start. */
     private static void writeDefaultConfig(File dir) throws IOException {
-        File cfg = new File(dir, "openttd.cfg");
-        if (cfg.exists()) return;
         dir.mkdirs();
-        String text = "[gui]\n"
+        writeIfMissing(new File(dir, "openttd.cfg"),
+                "[gui]\n"
                 /* Drag the map with a finger (left button). */
-                + "scroll_mode = 3\n";
-        try (OutputStream out = new FileOutputStream(cfg)) {
+                + "scroll_mode = 3\n");
+        writeIfMissing(new File(dir, "private.cfg"),
+                "[network]\n"
+                /* A private game; do not ask about sending usage surveys. */
+                + "participate_survey = no\n");
+    }
+
+    private static void writeIfMissing(File file, String text) throws IOException {
+        if (file.exists()) return;
+        try (OutputStream out = new FileOutputStream(file)) {
             out.write(text.getBytes());
         }
     }

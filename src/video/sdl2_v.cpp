@@ -159,6 +159,10 @@ bool VideoDriver_SDL_Base::CreateMainWindow(uint w, uint h, uint flags)
 	if (_fullscreen) {
 		flags |= SDL_WINDOW_FULLSCREEN;
 	}
+#ifdef __ANDROID__
+	/* Hide the phone's status and navigation bars. */
+	flags |= SDL_WINDOW_FULLSCREEN;
+#endif
 
 	int x = SDL_WINDOWPOS_UNDEFINED, y = SDL_WINDOWPOS_UNDEFINED;
 	SDL_Rect r;
