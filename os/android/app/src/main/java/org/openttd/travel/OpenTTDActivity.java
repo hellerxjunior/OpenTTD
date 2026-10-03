@@ -2,7 +2,6 @@ package org.openttd.travel;
 
 import android.content.res.AssetManager;
 import android.os.Bundle;
-import android.system.Os;
 import android.util.Log;
 
 import org.libsdl.app.SDLActivity;
@@ -12,12 +11,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Locale;
 
 /**
  * Starts OpenTTD through SDL. Before the native code runs, the game data
  * packed in the APK (base sets, languages, scripts) is copied to the app's
- * private storage, because OpenTTD reads its data from normal files.
+ * private storage (files/data/openttd), because OpenTTD reads its data from
+ * normal files.
  */
 public class OpenTTDActivity extends SDLActivity {
     private static final String TAG = "OpenTTD";
@@ -32,14 +31,7 @@ public class OpenTTDActivity extends SDLActivity {
         try {
             installData(new File(data, "openttd"));
             writeDefaultConfig(new File(config, "openttd"));
-
-            Os.setenv("HOME", files.getAbsolutePath(), true);
-            Os.setenv("XDG_DATA_HOME", data.getAbsolutePath(), true);
-            Os.setenv("XDG_CONFIG_HOME", config.getAbsolutePath(), true);
-            Os.setenv("TMPDIR", getCacheDir().getAbsolutePath(), true);
-            /* OpenTTD picks its first language from the locale. */
-            Locale locale = Locale.getDefault();
-            Os.setenv("LANG", locale.getLanguage() + "_" + locale.getCountry() + ".UTF-8", true);
+            /* The native side points HOME and XDG_* at these folders. */
         } catch (Exception e) {
             Log.e(TAG, "Preparing game data failed", e);
         }

@@ -18,6 +18,7 @@
 
 #ifdef __ANDROID__
 /* SDL renames main() to SDL_main(), which its Java activity calls. */
+#	include <SDL.h>
 #	include <SDL_main.h>
 #	include <android/log.h>
 #	include <unistd.h>
@@ -53,12 +54,36 @@ static void RedirectOutputToLog()
 		}
 	}).detach();
 }
+
+/**
+ * Point OpenTTD at the app's private storage, where the Java activity has
+ * unpacked the game data, and pick the language of the phone.
+ */
+static void SetupAndroidEnvironment()
+{
+	const char *files = SDL_AndroidGetInternalStoragePath();
+	if (files != nullptr) {
+		std::string base = files;
+		setenv("HOME", base.c_str(), 1);
+		setenv("XDG_DATA_HOME", (base + "/data").c_str(), 1);
+		setenv("XDG_CONFIG_HOME", (base + "/config").c_str(), 1);
+	}
+
+	SDL_Locale *locales = SDL_GetPreferredLocales();
+	if (locales != nullptr && locales[0].language != nullptr) {
+		std::string lang = locales[0].language;
+		if (locales[0].country != nullptr) lang = lang + "_" + locales[0].country;
+		setenv("LANG", (lang + ".UTF-8").c_str(), 1);
+	}
+	SDL_free(locales);
+}
 #endif
 
 int CDECL main(int argc, char *argv[])
 {
 #ifdef __ANDROID__
 	RedirectOutputToLog();
+	SetupAndroidEnvironment();
 #endif
 
 	/* Make sure our arguments contain only valid UTF-8 characters. */
