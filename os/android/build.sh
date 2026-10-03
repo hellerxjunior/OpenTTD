@@ -62,6 +62,7 @@ echo "::group::OpenTTD"
 SDL_PREFIX="${OUT}/sdl-install-${ABI}"
 cmake -S "${ROOT}" -B "${OUT}/game-${ABI}" "${ANDROID_CMAKE[@]}" \
 	-DHOST_BINARY_DIR="${OUT}/host" \
+	-DOPTION_INSTALL_FHS=OFF \
 	-DSDL2_DIR="${SDL_PREFIX}/lib/cmake/SDL2" \
 	-DCMAKE_FIND_ROOT_PATH="${SDL_PREFIX}" \
 	-DCMAKE_INSTALL_PREFIX="${OUT}/stage-${ABI}"
