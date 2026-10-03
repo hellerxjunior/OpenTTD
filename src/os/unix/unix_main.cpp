@@ -69,6 +69,9 @@ static void SetupAndroidEnvironment()
 		setenv("XDG_CONFIG_HOME", (base + "/config").c_str(), 1);
 	}
 
+	/* The map is wide; keep the phone sideways. */
+	SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+
 	SDL_Locale *locales = SDL_GetPreferredLocales();
 	if (locales != nullptr && locales[0].language != nullptr) {
 		std::string lang = locales[0].language;
