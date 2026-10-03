@@ -81,6 +81,7 @@ mkdir -p "${LIBS}" "${ASSETS}/baseset" "${JAVA}"
 
 cp "${SDL_PREFIX}/lib/libSDL2.so" "${LIBS}/"
 cp "${OUT}/stage-${ABI}/libmain.so" "${LIBS}/"
+"${NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip" --strip-unneeded "${LIBS}"/*.so
 
 # Game data: everything installed next to the library.
 cp -r "${OUT}/stage-${ABI}/." "${ASSETS}/"
