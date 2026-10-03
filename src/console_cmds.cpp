@@ -46,6 +46,12 @@
 #include "3rdparty/fmt/chrono.h"
 #include "company_cmd.h"
 #include "misc_cmd.h"
+#include "autoroute_cmd.h"
+#include "industry.h"
+#include "town.h"
+#include "core/backup_type.hpp"
+#include "rail_type.h"
+#include "road_type.h"
 
 #if defined(WITH_ZLIB)
 #include "network/network_content.h"
@@ -361,6 +367,83 @@ static bool ConZoomToLevel(std::span<std::string_view> argv)
  * Scroll to a tile on the map.
  * @copydoc IConsoleCmdProc
  */
+/**
+ * Parse a place for the autoroute command: "x,y", "t<town id>" or "i<industry id>".
+ * @param arg The argument.
+ * @return The tile, or std::nullopt when it is not a valid place.
+ */
+static std::optional<TileIndex> ParseAutoRoutePlace(std::string_view arg)
+{
+	if (arg.size() > 1 && (arg[0] == 't' || arg[0] == 'i')) {
+		auto id = ParseInteger(arg.substr(1), 10);
+		if (!id.has_value()) return std::nullopt;
+		if (arg[0] == 't') {
+			if (!Town::IsValidID(*id)) return std::nullopt;
+			return Town::Get(*id)->xy;
+		}
+		if (!Industry::IsValidID(*id)) return std::nullopt;
+		return Industry::Get(*id)->location.tile;
+	}
+
+	auto comma = arg.find(',');
+	if (comma == std::string_view::npos) return std::nullopt;
+	auto x = ParseInteger(arg.substr(0, comma), 0);
+	auto y = ParseInteger(arg.substr(comma + 1), 0);
+	if (!x.has_value() || !y.has_value() || *x >= Map::SizeX() || *y >= Map::SizeY()) return std::nullopt;
+	return TileXY(*x, *y);
+}
+
+static bool ConAutoRoute(std::span<std::string_view> argv)
+{
+	if (argv.empty()) {
+		IConsolePrint(CC_HELP, "Find and build a road or railway between two places.");
+		IConsolePrint(CC_HELP, "Usage: 'autoroute <road|rail> <from> <to> [build]'. A place is 'x,y', 't<town id>' or 'i<industry id>'.");
+		IConsolePrint(CC_HELP, "Without 'build' only the cost is shown.");
+		return true;
+	}
+	if (argv.size() < 4) return false;
+
+	TransportType type;
+	if (argv[1] == "road") {
+		type = TransportType::Road;
+	} else if (argv[1] == "rail") {
+		type = TransportType::Rail;
+	} else {
+		return false;
+	}
+
+	auto from = ParseAutoRoutePlace(argv[2]);
+	auto to = ParseAutoRoutePlace(argv[3]);
+	if (!from.has_value() || !to.has_value()) {
+		IConsolePrint(CC_ERROR, "Unknown place.");
+		return true;
+	}
+	if (!Company::IsValidID(_local_company)) {
+		IConsolePrint(CC_ERROR, "You have to play as a company.");
+		return true;
+	}
+
+	TileIndex start = AutoRouteSnapEnd(*from, *to);
+	TileIndex end = AutoRouteSnapEnd(*to, start);
+	bool build = argv.size() > 4 && argv[4] == "build";
+	IConsolePrint(CC_INFO, "Route from {},{} to {},{} ({} tiles apart)", TileX(start), TileY(start), TileX(end), TileY(end), DistanceManhattan(start, end));
+
+	AutoRestoreBackup cur_company(_current_company, _local_company);
+	auto begin = std::chrono::steady_clock::now();
+	CommandCost cost = Command<Commands::BuildAutoRoute>::Do(DoCommandFlag::QueryCost, end, start, type, RAILTYPE_RAIL, ROADTYPE_ROAD);
+	auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count();
+	if (cost.Failed()) {
+		IConsolePrint(CC_ERROR, "No route ({} ms): {}", ms, GetString(cost.GetErrorMessage()));
+		return true;
+	}
+	IConsolePrint(CC_INFO, "Route cost: {} ({} ms)", cost.GetCost(), ms);
+	if (build) {
+		bool ok = Command<Commands::BuildAutoRoute>::Post(STR_ERROR_CAN_T_DO_THIS, end, start, type, RAILTYPE_RAIL, ROADTYPE_ROAD);
+		IConsolePrint(ok ? CC_INFO : CC_ERROR, ok ? "Route built." : "Building failed.");
+	}
+	return true;
+}
+
 static bool ConScrollToTile(std::span<std::string_view> argv)
 {
 	if (argv.empty()) {
@@ -2985,6 +3068,7 @@ void IConsoleStdLibRegister()
 	IConsole::CmdRegister("script",                  ConScript);
 	IConsole::CmdRegister("zoomto",                  ConZoomToLevel);
 	IConsole::CmdRegister("scrollto",                ConScrollToTile);
+	IConsole::CmdRegister("autoroute",               ConAutoRoute);
 	IConsole::CmdRegister("alias",                   ConAlias);
 	IConsole::CmdRegister("load",                    ConLoad);
 	IConsole::CmdRegister("load_save",               ConLoad);

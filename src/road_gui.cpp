@@ -27,6 +27,7 @@
 #include "company_base.h"
 #include "hotkeys.h"
 #include "road_gui.h"
+#include "autoroute_gui.h"
 #include "toolbar_gui.h"
 #include "zoom_func.h"
 #include "dropdown_type.h"
@@ -548,6 +549,7 @@ struct BuildRoadToolbarWindow : Window {
 			case WID_ROT_BUILD_BRIDGE: return SPR_CURSOR_BRIDGE;
 			case WID_ROT_BUILD_TUNNEL: return GetRoadTypeInfo(this->roadtype)->cursor.tunnel;
 			case WID_ROT_CONVERT_ROAD: return GetRoadTypeInfo(this->roadtype)->cursor.convert_road;
+			case WID_ROT_AUTOROUTE: return GetRoadTypeInfo(this->roadtype)->cursor.autoroad;
 			default: NOT_REACHED();
 		}
 	}
@@ -571,6 +573,7 @@ struct BuildRoadToolbarWindow : Window {
 			case WID_ROT_BUILD_BRIDGE: return HT_RECT;
 			case WID_ROT_BUILD_TUNNEL: return HT_SPECIAL;
 			case WID_ROT_CONVERT_ROAD: return HT_RECT | HT_DIAGONAL;
+			case WID_ROT_AUTOROUTE: return HT_RECT;
 			default: NOT_REACHED();
 		}
 	}
@@ -724,6 +727,10 @@ struct BuildRoadToolbarWindow : Window {
 				VpStartPlaceSizing(tile, VPM_X_AND_Y, DDSP_CONVERT_ROAD);
 				break;
 
+			case WID_ROT_AUTOROUTE:
+				PlaceProc_AutoRoute(this, tile, TransportType::Road, INVALID_RAILTYPE, _cur_roadtype);
+				break;
+
 			default: NOT_REACHED();
 		}
 	}
@@ -732,6 +739,7 @@ struct BuildRoadToolbarWindow : Window {
 	{
 		if (_game_mode != GameMode::Editor && (this->IsWidgetLowered(WID_ROT_BUS_STATION) || this->IsWidgetLowered(WID_ROT_TRUCK_STATION))) SetViewportCatchmentStation(nullptr, true);
 
+		ResetAutoRoute();
 		this->RaiseButtons();
 		this->SetWidgetDisabledState(WID_ROT_REMOVE, true);
 		this->SetWidgetDirty(WID_ROT_REMOVE);
@@ -988,6 +996,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_road_widgets =
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_ROAD_Y_DIR, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_ROAD_SECTION),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_AUTOROAD),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_AUTOROAD, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_AUTOROAD),
+		NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_ROT_AUTOROUTE),
+						SetFill(0, 1), SetToolbarMinimalSize(2), SetStringTip(STR_AUTOROUTE_BUTTON, STR_ROAD_TOOLBAR_TOOLTIP_AUTOROUTE),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_DEMOLISH),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_DYNAMITE, STR_TOOLTIP_DEMOLISH_BUILDINGS_ETC),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_DEPOT),
@@ -1036,6 +1046,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_tramway_widget
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_TRAMWAY_Y_DIR, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_TRAMWAY_SECTION),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_AUTOROAD),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_AUTOTRAM, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_AUTOTRAM),
+		NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_ROT_AUTOROUTE),
+						SetFill(0, 1), SetToolbarMinimalSize(2), SetStringTip(STR_AUTOROUTE_BUTTON, STR_ROAD_TOOLBAR_TOOLTIP_AUTOROUTE),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_DEMOLISH),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_DYNAMITE, STR_TOOLTIP_DEMOLISH_BUILDINGS_ETC),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_DEPOT),
@@ -1110,6 +1122,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_road_scen_widg
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_ROAD_Y_DIR, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_ROAD_SECTION),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_AUTOROAD),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_AUTOROAD, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_AUTOROAD),
+		NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_ROT_AUTOROUTE),
+						SetFill(0, 1), SetToolbarMinimalSize(2), SetStringTip(STR_AUTOROUTE_BUTTON, STR_ROAD_TOOLBAR_TOOLTIP_AUTOROUTE),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_DEMOLISH),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_DYNAMITE, STR_TOOLTIP_DEMOLISH_BUILDINGS_ETC),
 
@@ -1150,6 +1164,8 @@ static constexpr std::initializer_list<NWidgetPart> _nested_build_tramway_scen_w
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_TRAMWAY_Y_DIR, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_TRAMWAY_SECTION),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_AUTOROAD),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_AUTOTRAM, STR_ROAD_TOOLBAR_TOOLTIP_BUILD_AUTOTRAM),
+		NWidget(WWT_TEXTBTN, Colours::DarkGreen, WID_ROT_AUTOROUTE),
+						SetFill(0, 1), SetToolbarMinimalSize(2), SetStringTip(STR_AUTOROUTE_BUTTON, STR_ROAD_TOOLBAR_TOOLTIP_AUTOROUTE),
 		NWidget(WWT_IMGBTN, Colours::DarkGreen, WID_ROT_DEMOLISH),
 						SetFill(0, 1), SetToolbarMinimalSize(1), SetSpriteTip(SPR_IMG_DYNAMITE, STR_TOOLTIP_DEMOLISH_BUILDINGS_ETC),
 
