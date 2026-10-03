@@ -453,6 +453,29 @@ bool VideoDriver_SDL_Base::PollEvent()
 			break;
 		}
 
+#ifdef __ANDROID__
+		case SDL_FINGERDOWN:
+			/* A new touch starts a new pinch. */
+			this->pinch_distance = 0;
+			break;
+
+		case SDL_MULTIGESTURE: {
+			/* Pinching with two fingers zooms like the mouse wheel, centred between the fingers. */
+			const float PINCH_STEP = 0.06f; // Change of finger distance, relative to the screen size, per zoom step.
+			this->pinch_distance += ev.mgesture.dDist;
+			while (this->pinch_distance > PINCH_STEP) {
+				_cursor.wheel--;
+				this->pinch_distance -= PINCH_STEP;
+			}
+			while (this->pinch_distance < -PINCH_STEP) {
+				_cursor.wheel++;
+				this->pinch_distance += PINCH_STEP;
+			}
+			_cursor.UpdateCursorPosition(static_cast<int>(ev.mgesture.x * _screen.width), static_cast<int>(ev.mgesture.y * _screen.height));
+			break;
+		}
+#endif
+
 		case SDL_MOUSEWHEEL: {
 			if (ev.wheel.y > 0) {
 				_cursor.wheel--;
